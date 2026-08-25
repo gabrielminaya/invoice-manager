@@ -1,0 +1,221 @@
+@import "tailwindcss";
+
+/* ------------------------------------------------------------------ *
+ * Tokens de diseño
+ * ------------------------------------------------------------------ */
+
+:root {
+  --bg: oklch(0.985 0.002 250);
+  --surface: oklch(1 0 0);
+  --surface-2: oklch(0.972 0.003 250);
+  --border: oklch(0.912 0.005 250);
+  --text: oklch(0.22 0.015 260);
+  --text-muted: oklch(0.53 0.014 260);
+  --text-faint: oklch(0.66 0.012 260);
+
+  --accent: oklch(0.53 0.19 262);
+  --accent-hover: oklch(0.47 0.19 262);
+  --accent-soft: oklch(0.95 0.03 262);
+  --accent-text: oklch(0.42 0.18 262);
+
+  --success: oklch(0.58 0.14 156);
+  --success-soft: oklch(0.95 0.04 156);
+  --warning: oklch(0.68 0.15 70);
+  --warning-soft: oklch(0.96 0.05 80);
+  --danger: oklch(0.57 0.2 22);
+  --danger-soft: oklch(0.95 0.03 22);
+
+  --shadow-card: 0 1px 2px oklch(0.2 0.02 260 / 0.05), 0 1px 3px oklch(0.2 0.02 260 / 0.04);
+  --shadow-lift: 0 4px 16px oklch(0.2 0.02 260 / 0.08);
+
+  --radius: 0.875rem;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: oklch(0.17 0.012 265);
+    --surface: oklch(0.213 0.014 265);
+    --surface-2: oklch(0.253 0.016 265);
+    --border: oklch(0.31 0.018 265);
+    --text: oklch(0.96 0.004 265);
+    --text-muted: oklch(0.72 0.012 265);
+    --text-faint: oklch(0.58 0.014 265);
+
+    --accent: oklch(0.68 0.16 264);
+    --accent-hover: oklch(0.74 0.16 264);
+    --accent-soft: oklch(0.3 0.06 264);
+    --accent-text: oklch(0.82 0.11 264);
+
+    --success: oklch(0.72 0.15 158);
+    --success-soft: oklch(0.31 0.06 158);
+    --warning: oklch(0.79 0.14 78);
+    --warning-soft: oklch(0.33 0.06 78);
+    --danger: oklch(0.68 0.19 22);
+    --danger-soft: oklch(0.32 0.08 22);
+
+    --shadow-card: 0 1px 2px oklch(0 0 0 / 0.3);
+    --shadow-lift: 0 6px 20px oklch(0 0 0 / 0.4);
+  }
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-line: var(--border);
+  --color-ink: var(--text);
+  --color-muted: var(--text-muted);
+  --color-faint: var(--text-faint);
+
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-text: var(--accent-text);
+
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+
+  --radius-card: var(--radius);
+
+  --shadow-card: var(--shadow-card);
+  --shadow-lift: var(--shadow-lift);
+}
+
+/* ------------------------------------------------------------------ *
+ * Base
+ * ------------------------------------------------------------------ */
+
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+html {
+  background: var(--bg);
+  /* Evita el zoom involuntario al enfocar inputs en iOS. */
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+  overscroll-behavior-y: none;
+}
+
+/* Números tabulares en importes: las columnas quedan alineadas. */
+.tabular {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+}
+
+/* Áreas seguras del notch y de la barra de gestos. */
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+.pt-safe {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
+input,
+select,
+textarea {
+  /* 16px mínimo: por debajo, Safari iOS hace zoom al enfocar. */
+  font-size: max(16px, 1rem);
+}
+
+::selection {
+  background: var(--accent-soft);
+  color: var(--accent-text);
+}
+
+/* ------------------------------------------------------------------ *
+ * Ancho de la columna de contenido
+ *
+ * La cabecera fija ocupa todo el ancho de la columna (para que su fondo
+ * difuminado no se corte a media pantalla) pero su contenido se centra con esta
+ * misma clase, igual que el de cada página.
+ * ------------------------------------------------------------------ */
+
+.page-shell {
+  margin-inline: auto;
+  width: 100%;
+  max-width: 48rem;
+  padding-inline: 1rem;
+}
+
+@media (min-width: 64rem) {
+  .page-shell {
+    max-width: 62rem;
+    padding-inline: 1.5rem;
+  }
+}
+
+@media (min-width: 80rem) {
+  .page-shell {
+    max-width: 72rem;
+  }
+}
+
+/**
+ * Los formularios no aprovechan el ancho completo: una fila de campos de
+ * 1200 px es incómoda de recorrer. Se combina con .page-shell y, al ir después,
+ * gana el max-width.
+ */
+@media (min-width: 64rem) {
+  .form-shell {
+    max-width: 46rem;
+  }
+}
+
+/* ------------------------------------------------------------------ *
+ * Impresión: solo el documento de la factura, tamaño A4
+ * ------------------------------------------------------------------ */
+
+@media print {
+  @page {
+    size: A4;
+    margin: 14mm;
+  }
+
+  html,
+  body {
+    background: #fff !important;
+    color: #000 !important;
+  }
+
+  /* Todo lo que no sea el documento desaparece. */
+  .no-print {
+    display: none !important;
+  }
+
+  .print-document {
+    box-shadow: none !important;
+    border: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    max-width: none !important;
+    width: 100% !important;
+    background: #fff !important;
+    color: #000 !important;
+  }
+
+  .print-document *,
+  .print-document *::before,
+  .print-document *::after {
+    color: #000 !important;
+    border-color: #999 !important;
+    background: transparent !important;
+  }
+
+  .print-table th,
+  .print-table td {
+    border: 1px solid #999 !important;
+  }
+}

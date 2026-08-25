@@ -1,0 +1,22 @@
+# Se reinstala dentro de la imagen para la plataforma correcta.
+node_modules
+.next
+.git
+.gitignore
+
+# Nunca dentro de la imagen: los secretos se pasan como variables de entorno
+# en tiempo de ejecución.
+.env
+.env.*
+
+# No hacen falta para compilar ni para ejecutar.
+tests
+vitest.config.mts
+eslint.config.mjs
+*.log
+*.pdf
+README.md
+AGENTS.md
+CLAUDE.md
+Dockerfile
+.dockerignore

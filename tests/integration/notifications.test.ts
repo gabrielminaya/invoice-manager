@@ -106,6 +106,6 @@ describe.skipIf(!hayBase)("copias de los avisos por correo (integración)", () =
 
     expect(enviado.html).not.toContain("/invoices/");
     expect(enviado.text).not.toContain("/invoices/");
-    expect(enviado.text).toContain("Adjuntamos en PDF");
+    expect(enviado.text).toContain("adjunta en PDF");
   });
 });

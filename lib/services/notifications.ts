@@ -85,6 +85,17 @@ async function loadInvoiceContext(invoiceId: string): Promise<InvoiceContext | n
       // Sin `url`: el detalle de la factura exige sesión y el cliente no la
       // tiene, así que el enlace lo dejaba en el login. Va el PDF adjunto.
       pdfAttached: attachment !== null,
+      company: {
+        legalName: row.company.legalName,
+        rnc: row.company.rnc,
+        addressLine: row.company.addressLine,
+        city: row.company.city,
+        country: row.company.country,
+        phone: row.company.phone,
+        email: row.company.email,
+        website: row.company.website,
+        logoUrl: row.company.logoUrl,
+      },
       // Se formatea la ventana guardada en la factura en lugar de recalcularla:
       // así la etiqueta es correcta para cualquier frecuencia, no solo mensual.
       periodLabel:

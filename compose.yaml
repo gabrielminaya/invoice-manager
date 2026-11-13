@@ -1,0 +1,27 @@
+# Despliegue con Docker Compose.
+#
+#   docker compose up -d --build     # construir y (re)levantar
+#   docker compose logs -f app       # ver logs
+#   docker compose down              # parar
+#
+# Las variables salen de .env.docker (sin comillas; ver el propio archivo).
+# El contenedor aplica las migraciones pendientes al arrancar y el
+# HEALTHCHECK viene definido en el Dockerfile.
+
+services:
+  app:
+    build: .
+    image: facturacion
+    container_name: facturacion
+    restart: unless-stopped
+    env_file: .env.docker
+    # Solo en localhost: el tráfico público entra por el nginx del servidor,
+    # que hace de proxy con https. Así el puerto 3000 no queda expuesto aunque
+    # se abra el firewall.
+    ports:
+      - "127.0.0.1:3000:3000"
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"

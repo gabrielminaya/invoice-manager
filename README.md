@@ -202,6 +202,16 @@ docker run --rm -p 3000:3000 \
   facturacion
 ```
 
+O con Docker Compose, que toma las variables de `.env.docker`:
+
+```bash
+docker compose up -d --build   # construir y levantar (o actualizar)
+docker compose logs -f app
+```
+
+`compose.yaml` publica el puerto solo en `127.0.0.1:3000`: se espera un proxy
+(nginx) delante que sirva https.
+
 El contenedor **aplica las migraciones pendientes al arrancar** y luego sirve la
 app. Con `RUN_MIGRATIONS=false` se omite ese paso, que es lo que conviene si
 levantas varias réplicas: el migrador no está pensado para correr en paralelo, así

@@ -91,4 +91,21 @@ describe.skipIf(!hayBase)("copias de los avisos por correo (integración)", () =
 
     expect(readOutbox()[0].cc).toEqual([]);
   });
+
+  it("adjunta la factura en PDF y no enlaza a la página privada", async () => {
+    const invoice = await facturaDe();
+
+    await notifyInvoiceIssued(invoice.id);
+
+    const [enviado] = readOutbox();
+    expect(enviado.attachments).toHaveLength(1);
+    const [pdf] = enviado.attachments!;
+    expect(pdf.filename).toBe(`Factura-${invoice.number}.pdf`);
+    expect(pdf.contentType).toBe("application/pdf");
+    expect(Buffer.from(pdf.content, "base64").subarray(0, 5).toString()).toBe("%PDF-");
+
+    expect(enviado.html).not.toContain("/invoices/");
+    expect(enviado.text).not.toContain("/invoices/");
+    expect(enviado.text).toContain("Adjuntamos en PDF");
+  });
 });

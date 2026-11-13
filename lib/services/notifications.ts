@@ -1,6 +1,6 @@
-import { eq } from "drizzle-orm";
+import { asc, eq } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { clients, companies, invoices, payments } from "@/lib/db/schema";
+import { clients, companies, invoiceItems, invoices, payments } from "@/lib/db/schema";
 import { diffInDays, formatDateDO, todayInTimeZone } from "@/lib/dates";
 import {
   dedupeAddresses,
@@ -9,8 +9,10 @@ import {
   templates,
   toRecipients,
   type MailAddress,
+  type MailAttachment,
   type MailResult,
 } from "@/lib/mail";
+import { invoicePdfFilename, renderInvoicePdf } from "@/lib/pdf/invoice-pdf";
 import type { InvoiceMailData } from "@/lib/mail/templates";
 
 /**
@@ -23,31 +25,19 @@ import type { InvoiceMailData } from "@/lib/mail/templates";
  * revierte una emisión ni interrumpe una corrida del cron.
  */
 
-/** Base absoluta para los enlaces del correo. Sin ella, el correo va sin botón. */
-function appUrl(): string | null {
-  const raw = process.env.APP_URL ?? process.env.NEXT_PUBLIC_APP_URL ?? null;
-  if (!raw) return null;
-  return raw.replace(/\/+$/, "");
-}
-
 type InvoiceContext = {
   data: InvoiceMailData;
   recipientEmail: string | null;
   /** Copias del cliente más la compañía emisora, ya sin repetidos. */
   cc: MailAddress[];
   receiptNumber: number;
+  /** Factura en PDF, o null si no se pudo generar (el correo sale igual). */
+  attachment: MailAttachment | null;
 };
 
 async function loadInvoiceContext(invoiceId: string): Promise<InvoiceContext | null> {
   const [row] = await db
-    .select({
-      invoice: invoices,
-      clientName: clients.name,
-      clientEmail: clients.email,
-      clientEmailCc: clients.emailCc,
-      companyName: companies.name,
-      companyEmail: companies.email,
-    })
+    .select({ invoice: invoices, client: clients, company: companies })
     .from(invoices)
     .innerJoin(clients, eq(clients.id, invoices.clientId))
     .innerJoin(companies, eq(companies.id, invoices.companyId))
@@ -56,35 +46,45 @@ async function loadInvoiceContext(invoiceId: string): Promise<InvoiceContext | n
 
   if (!row) return null;
 
-  const [receipt] = await db
-    .select({ receiptNumber: payments.receiptNumber })
-    .from(payments)
-    .where(eq(payments.invoiceId, invoiceId))
-    .limit(1);
+  const [items, receipts] = await Promise.all([
+    db
+      .select()
+      .from(invoiceItems)
+      .where(eq(invoiceItems.invoiceId, invoiceId))
+      .orderBy(asc(invoiceItems.position)),
+    db
+      .select()
+      .from(payments)
+      .where(eq(payments.invoiceId, invoiceId))
+      .orderBy(asc(payments.receiptNumber)),
+  ]);
 
-  const base = appUrl();
+  const attachment = await buildPdfAttachment({ ...row, items, receipts });
 
   // La compañía emisora se copia siempre que tenga correo: así queda constancia
   // de lo enviado en su propio buzón, sin depender de la bandeja del proveedor.
   const cc = dedupeAddresses(
-    [...parseAddressList(row.clientEmailCc), ...parseAddressList(row.companyEmail)],
-    row.clientEmail ? toRecipients(row.clientEmail) : [],
+    [...parseAddressList(row.client.emailCc), ...parseAddressList(row.company.email)],
+    row.client.email ? toRecipients(row.client.email) : [],
   );
 
   return {
-    recipientEmail: row.clientEmail,
+    recipientEmail: row.client.email,
     cc,
-    receiptNumber: receipt?.receiptNumber ?? 1,
+    receiptNumber: receipts[0]?.receiptNumber ?? 1,
+    attachment,
     data: {
       number: row.invoice.number,
-      clientName: row.clientName,
-      companyName: row.companyName,
+      clientName: row.client.name,
+      companyName: row.company.name,
       issueDate: row.invoice.issueDate,
       dueDate: row.invoice.dueDate,
       total: row.invoice.total,
       currency: row.invoice.currency,
       status: row.invoice.status,
-      url: base ? `${base}/invoices/${row.invoice.id}` : undefined,
+      // Sin `url`: el detalle de la factura exige sesión y el cliente no la
+      // tiene, así que el enlace lo dejaba en el login. Va el PDF adjunto.
+      pdfAttached: attachment !== null,
       // Se formatea la ventana guardada en la factura en lugar de recalcularla:
       // así la etiqueta es correcta para cualquier frecuencia, no solo mensual.
       periodLabel:
@@ -93,6 +93,23 @@ async function loadInvoiceContext(invoiceId: string): Promise<InvoiceContext | n
           : undefined,
     },
   };
+}
+
+async function buildPdfAttachment(
+  data: Parameters<typeof renderInvoicePdf>[0],
+): Promise<MailAttachment | null> {
+  try {
+    const bytes = await renderInvoicePdf(data);
+    return {
+      filename: invoicePdfFilename(data.invoice.number),
+      content: Buffer.from(bytes).toString("base64"),
+      contentType: "application/pdf",
+    };
+  } catch (error) {
+    // Un PDF fallido no debe impedir el aviso: el correo lleva igual los datos.
+    console.error(`[mail] no se pudo generar el PDF de ${data.invoice.number}:`, error);
+    return null;
+  }
 }
 
 const skipped = (reason: string): MailResult => ({
@@ -112,6 +129,7 @@ export async function notifyInvoiceIssued(invoiceId: string): Promise<MailResult
   return sendMail({
     to: toRecipients(context.recipientEmail),
     cc: context.cc,
+    attachments: context.attachment ? [context.attachment] : undefined,
     ...templates.invoiceIssued(context.data),
   });
 }
@@ -125,6 +143,7 @@ export async function notifyPaymentReceipt(invoiceId: string): Promise<MailResul
   return sendMail({
     to: toRecipients(context.recipientEmail),
     cc: context.cc,
+    attachments: context.attachment ? [context.attachment] : undefined,
     ...templates.paymentReceipt({
       ...context.data,
       paidDate: todayInTimeZone(process.env.CRON_TIMEZONE ?? "America/Santo_Domingo"),
@@ -145,6 +164,7 @@ export async function notifyInvoiceOverdue(invoiceId: string, asOf: string): Pro
   return sendMail({
     to: toRecipients(context.recipientEmail),
     cc: context.cc,
+    attachments: context.attachment ? [context.attachment] : undefined,
     ...templates.invoiceOverdue({ ...context.data, daysLate }),
   });
 }

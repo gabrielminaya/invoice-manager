@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { withSnapshot } from "@/components/invoice-document";
+import { withSnapshot } from "@/lib/snapshot";
 
 /**
  * Fusión de la copia fiscal congelada sobre el registro vivo.

@@ -87,3 +87,10 @@ export function documentTotals(items: TotalsInput[]): DocumentTotals {
     total: fromCents(subtotalCents + taxCents),
   };
 }
+
+/** Las cantidades enteras se imprimen sin decimales, como en la factura original. */
+export function formatQuantity(quantity: number): string {
+  return Number.isInteger(quantity)
+    ? String(quantity)
+    : new Intl.NumberFormat("en-US", { maximumFractionDigits: 4 }).format(quantity);
+}

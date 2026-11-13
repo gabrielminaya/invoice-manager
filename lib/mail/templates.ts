@@ -23,8 +23,13 @@ export type InvoiceMailData = {
   total: number;
   currency: Currency;
   status: InvoiceStatus;
-  /** Enlace absoluto al detalle de la factura, si se puede construir. */
+  /**
+   * Enlace absoluto a la factura. Solo debe pasarse si el destinatario puede
+   * abrirlo: el detalle de `/invoices/[id]` exige sesión y el cliente no la tiene.
+   */
   url?: string;
+  /** La factura viaja en PDF adjunto; el texto lo menciona. */
+  pdfAttached?: boolean;
   /** Descripción del período cubierto, en las facturas recurrentes. */
   periodLabel?: string;
 };
@@ -38,7 +43,9 @@ export function invoiceIssued(data: InvoiceMailData): MailBody {
   const lines = [
     `Hola ${data.clientName},`,
     "",
-    `Adjuntamos los datos de la factura ${data.number} emitida por ${data.companyName}.`,
+    data.pdfAttached
+      ? `Adjuntamos en PDF la factura ${data.number} emitida por ${data.companyName}.`
+      : `Estos son los datos de la factura ${data.number} emitida por ${data.companyName}.`,
     "",
     `Importe:      ${amount}`,
     `Emisión:      ${formatDateDO(data.issueDate)}`,
@@ -56,7 +63,9 @@ export function invoiceIssued(data: InvoiceMailData): MailBody {
     text: lines.join("\n"),
     html: layout({
       heading: `Factura ${data.number}`,
-      intro: `Hola ${data.clientName}, esta es la factura emitida por ${data.companyName}.`,
+      intro:
+        `Hola ${data.clientName}, esta es la factura emitida por ${data.companyName}.` +
+        (data.pdfAttached ? " La encontrarás en PDF adjunta a este correo." : ""),
       rows: [
         ["Importe", amount],
         ["Emisión", formatDateDO(data.issueDate)],
@@ -83,6 +92,8 @@ export function invoiceOverdue(data: InvoiceMailData & { daysLate: number }): Ma
     "",
     `Importe pendiente: ${amount}`,
     "",
+    data.pdfAttached ? "Te adjuntamos de nuevo la factura en PDF." : null,
+    data.pdfAttached ? "" : null,
     data.url ? `Detalle: ${data.url}` : null,
     data.url ? "" : null,
     "Si ya realizaste el pago, ignora este mensaje o escríbenos para conciliarlo.",
@@ -96,7 +107,8 @@ export function invoiceOverdue(data: InvoiceMailData & { daysLate: number }): Ma
       heading: `Factura ${data.number} vencida`,
       intro:
         `Hola ${data.clientName}, la factura venció el ${formatDateLong(data.dueDate)} ` +
-        `y sigue pendiente.`,
+        `y sigue pendiente.` +
+        (data.pdfAttached ? " Te adjuntamos de nuevo la factura en PDF." : ""),
       rows: [
         ["Importe pendiente", amount],
         ["Vencimiento", formatDateDO(data.dueDate)],
@@ -126,6 +138,8 @@ export function paymentReceipt(
     `Fecha:    ${formatDateDO(data.paidDate)}`,
     `Recibo:   ${data.receiptNumber}`,
     "",
+    data.pdfAttached ? "Adjuntamos la factura en PDF, ya marcada como pagada." : null,
+    data.pdfAttached ? "" : null,
     data.url ? `Detalle: ${data.url}` : null,
     data.url ? "" : null,
     data.companyName,
@@ -136,7 +150,9 @@ export function paymentReceipt(
     text: lines.join("\n"),
     html: layout({
       heading: "Pago recibido",
-      intro: `Hola ${data.clientName}, confirmamos el pago de la factura ${data.number}.`,
+      intro:
+        `Hola ${data.clientName}, confirmamos el pago de la factura ${data.number}.` +
+        (data.pdfAttached ? " Adjuntamos la factura en PDF." : ""),
       rows: [
         ["Importe", amount],
         ["Fecha del pago", formatDateDO(data.paidDate)],

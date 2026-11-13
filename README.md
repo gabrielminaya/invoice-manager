@@ -42,7 +42,7 @@ Al abrir la app por primera vez te llevará a `/setup` para crear tu cuenta.
 | `MAIL_FROM` | Remitente, en formato `Nombre <correo@dominio>`. |
 | `MAIL_REPLY_TO` | Opcional, dirección de respuesta. |
 | `MAIL_ENABLED` | `false` silencia todos los envíos. |
-| `APP_URL` | URL pública, para los enlaces "Ver la factura" del correo. |
+| `APP_URL` | URL pública. Respaldo para cargar el logo del PDF adjunto cuando es una ruta relativa que no está en `public/`. |
 
 ### Scripts
 
